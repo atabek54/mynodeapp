@@ -8,10 +8,10 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 const db = mysql.createConnection({
-    host: 'localhost', 
-    user: 'root', 
-    password: '', 
-    database: 'node_db'
+    host: '104.247.162.162', 
+    user: 'atabekhs_atabek54', 
+    password: 'Kaderkeita54', 
+    database: 'atabekhs_hsadatabase'
 });
 
 db.connect(err => {
