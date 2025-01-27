@@ -6,22 +6,21 @@ const mysql = require('mysql2');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: '104.247.162.162', 
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase'
 });
 
-db.connect(err => {
-    if (err) {
-        console.error('MySQL bağlantı hatası:', err);
-        return;
-    }
-    console.log('MySQL bağlantısı başarılı.');
+// db.connect(err => {
+//     if (err) {
+//         console.error('MySQL bağlantı hatası:', err);
+//         return;
+//     }
+//     console.log('MySQL bağlantısı başarılı.');
   
-});
+// });
 
 let waitingPlayer = null;
 let games = {}; 
