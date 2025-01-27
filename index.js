@@ -20,6 +20,7 @@ db.connect(err => {
         return;
     }
     console.log('MySQL bağlantısı başarılı.');
+  
 });
 
 let waitingPlayer = null;
