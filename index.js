@@ -2,8 +2,12 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2');
+const { v4: uuidv4 } = require('uuid'); // UUID oluşturmak için
+const bcrypt = require('bcrypt');
 
 const app = express();
+app.use(express.json()); // JSON verileri işleyebilmek için
+
 const server = http.createServer(app);
 const io = socketIo(server);
 const db = mysql.createPool({
@@ -12,15 +16,84 @@ const db = mysql.createPool({
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase'
 });
+app.post('/register', (req, res) => {
+    const { username, password } = req.body;
 
-// db.connect(err => {
-//     if (err) {
-//         console.error('MySQL bağlantı hatası:', err);
-//         return;
-//     }
-//     console.log('MySQL bağlantısı başarılı.');
-  
-// });
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    // Kullanıcı adının daha önce kayıtlı olup olmadığını kontrol et
+    const checkUserQuery = 'SELECT * FROM users WHERE username = ?';
+    db.query(checkUserQuery, [username], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (result.length > 0) {
+            // Eğer kullanıcı adı daha önce kaydedilmişse, hata döndür
+            return res.status(400).json({ error: 'Username already taken' });
+        }
+
+        // Kullanıcı adı daha önce alınmamışsa, şifreyi hash'le
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+            if (err) {
+                console.error('Password hashing error:', err);
+                return res.status(500).json({ error: 'Error hashing password' });
+            }
+
+            const user_uuid = uuidv4(); // Benzersiz UUID oluştur
+
+            // Yeni kullanıcıyı veritabanına ekle
+            const query = 'INSERT INTO users (user_uuid, username, password) VALUES (?, ?, ?)';
+            db.query(query, [user_uuid, username, hashedPassword], (err, result) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                res.json({ success: true, user_uuid });
+            });
+        });
+    });
+});
+
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    // Kullanıcıyı veritabanından bulalım
+    const query = 'SELECT * FROM users WHERE username = ?';
+    db.query(query, [username], (err, result) => {
+        if (err || result.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const user = result[0];
+        
+        // Şifreyi hash ile karşılaştıralım
+        bcrypt.compare(password, user.password, (err, isMatch) => {
+            if (err) {
+                console.error('Error comparing passwords:', err);
+                return res.status(500).json({ error: 'Error comparing passwords' });
+            }
+
+            if (isMatch) {
+                // Başarılı girişte user_uuid'yi de döndürüyoruz
+                res.json({
+                    success: true,
+                    message: 'Login successful',
+                    user_uuid: user.user_uuid, // user_uuid'yi burada döndürüyoruz
+                });
+            } else {
+                res.status(400).json({ error: 'Invalid password' });
+            }
+        });
+    });
+});
 
 let waitingPlayer = null;
 let games = {}; 
@@ -69,41 +142,79 @@ io.on('connection', (socket) => {
             waitingPlayer = null;
         }
     });
-
-    socket.on('correctAnswer', () => {
+    socket.on('playerAnswered', (selectedOption) => {
         const roomId = Object.keys(games).find(room => games[room].players.includes(socket.id));
+    
         if (roomId && games[roomId]) {
             const game = games[roomId];
-
+            const currentQuestion = game.questions[game.currentQuestionIndex];
+    
             if (!game.answeredQuestions || !Array.isArray(game.answeredQuestions)) {
                 game.answeredQuestions = [];
             }
-
-            const currentQuestion = game.questions[game.currentQuestionIndex];
-
-            if (!game.answeredQuestions.some(answer => answer.question === currentQuestion)) {
-                game.scores[socket.id] += 1;
+    
+            // Oyuncunun bu soruya zaten cevap verip vermediğini kontrol et
+            const playerAnswered = game.answeredQuestions.some(answer => answer.playerId === socket.id && answer.question === currentQuestion);
+    
+            if (!playerAnswered) {
                 game.answeredQuestions.push({
                     question: currentQuestion,
-                    playerId: socket.id
+                    playerId: socket.id,
+                    selectedAnswer: selectedOption
                 });
-
-                console.log(`Player ${socket.id} scored! Yeni skor: ${game.scores[socket.id]}`);
-                io.to(roomId).emit('updateScores', game.scores);
+    
+                // Eğer doğru cevap verdiyse skor arttır
+                if (selectedOption === currentQuestion.correct_answer) {
+                    game.scores[socket.id] += 1;
+                    console.log(`Player ${socket.id} scored! Yeni skor: ${game.scores[socket.id]}`);
+                }
             }
-
-            game.currentQuestionIndex = (game.currentQuestionIndex || 0) + 1;
-
-            if (game.currentQuestionIndex < game.questions.length) {
-                const nextQuestion = game.questions[game.currentQuestionIndex];
-                io.to(roomId).emit('nextQuestion', nextQuestion);
-            } else {
-                io.to(roomId).emit('gameEnded');
-                delete games[roomId]; 
-                console.log(`Game ended in room: ${roomId}`);
+    
+            // Tüm oyuncuların cevap verip vermediğini kontrol et
+            const allPlayersAnswered = game.players.every(playerId =>
+                game.answeredQuestions.some(answer => answer.playerId === playerId && answer.question === currentQuestion)
+            );
+    
+            if (allPlayersAnswered) {
+                // İlk doğru cevabı veren oyuncuyu bul
+                const firstCorrectAnswer = game.answeredQuestions.find(answer => answer.selectedAnswer === currentQuestion.correct_answer);
+                
+                if (firstCorrectAnswer) {
+                    // İlk doğru cevabı veren oyuncu ile yeni soruya geç
+                    game.currentQuestionIndex = (game.currentQuestionIndex || 0) + 1;
+    
+                    if (game.currentQuestionIndex < game.questions.length) {
+                        const nextQuestion = game.questions[game.currentQuestionIndex];
+                        game.answeredQuestions = []; // Yeni soru için önceki cevapları sıfırla
+                        io.to(roomId).emit('nextQuestion', nextQuestion);
+                    } else {
+                        io.to(roomId).emit('gameEnded');
+                        
+                        delete games[roomId];
+                        console.log(`Game ended in room: ${roomId}`);
+                    }
+                } else {
+                    console.log("İKİ OYUNCUDA Doğru cevap VEREMEDI, bekleniyor...");
+                    game.currentQuestionIndex = (game.currentQuestionIndex || 0) + 1;
+    
+                    if (game.currentQuestionIndex < game.questions.length) {
+                        const nextQuestion = game.questions[game.currentQuestionIndex];
+                        game.answeredQuestions = []; // Yeni soru için önceki cevapları sıfırla
+                        io.to(roomId).emit('nextQuestion', nextQuestion);
+                    } else {
+                        io.to(roomId).emit('gameEnded');
+                        delete games[roomId];
+                        console.log(`Game ended in room: ${roomId}`);
+                    }
+                }
+    
+                // Skorları güncelle ve tüm oyunculara ilet
+                io.to(roomId).emit('updateScores', game.scores);
             }
         }
     });
+    
+    
 
     socket.on('cancelGame', () => {
       // Eğer oyuncu bekleme durumundaysa ve oyun başlamamışsa
