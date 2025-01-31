@@ -3,7 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2');
 const { v4: uuidv4 } = require('uuid'); // UUID oluşturmak için
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const PORT = process.env.PORT || 3000;
 
 const app = express();
