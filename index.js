@@ -113,7 +113,7 @@ function loadQuestions(callback) {
 io.on('connection', (socket) => {
     console.log('A user connected: ' + socket.id);
 
-    socket.on('joinGame', () => {
+    socket.on('joinGame', (username) => {
         if (!waitingPlayer) {
             waitingPlayer = socket;
             console.log(`Player ${socket.id} is waiting for an opponent.`);
@@ -126,8 +126,10 @@ io.on('connection', (socket) => {
             waitingPlayer.join(roomId);
 
             games[roomId] = {
-                players: [waitingPlayer.id, socket.id],
-                scores: { [waitingPlayer.id]: 0, [socket.id]: 0 },
+                players: [
+                    { id: waitingPlayer.socket.id, username: waitingPlayer.username },
+                    { id: socket.id, username }
+                ],                scores: { [waitingPlayer.id]: 0, [socket.id]: 0 },
                 answeredQuestions: new Set(),
                 currentQuestionIndex: 0
             };
