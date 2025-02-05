@@ -11,21 +11,19 @@ app.use(express.json()); // JSON verileri işleyebilmek için
 
 const server = http.createServer(app);
 const io = socketIo(server);
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: '104.247.162.162', 
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase',
-    charset: 'utf8',
-    connectTimeout: 10000 // 10 saniyelik zaman aşımı
 });
-
-db.connect((err) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Veritabanı bağlantı hatası:', err);
         return;
     }
-    console.log('Veritabanı bağlantısı başarılı!');
+    console.log('Veritabanına başarıyla bağlanıldı!');
+    connection.release(); // Bağlantıyı serbest bırak
 });
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
