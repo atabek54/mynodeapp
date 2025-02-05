@@ -16,7 +16,7 @@ const db = mysql.createConnection({
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase',
-    charset: 'utf8',
+
 });
 db.connect((err) => {
     if (err) {
