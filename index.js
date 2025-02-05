@@ -18,6 +18,14 @@ const db = mysql.createPool({
     database: 'atabekhs_hsadatabase',
     charset: 'utf8',
 });
+db.getConnection((err, connection) => {
+    if (err) {
+        console.error('Veritabanı bağlantı hatası:', err);
+        return;
+    }
+    console.log('Veritabanına başarıyla bağlanıldı!');
+    connection.release(); // Bağlantıyı serbest bırak
+});
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
 
