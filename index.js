@@ -4,7 +4,7 @@ const socketIo = require('socket.io');
 const mysql = require('mysql2');
 const { v4: uuidv4 } = require('uuid'); // UUID oluşturmak için
 const bcrypt = require('bcryptjs');
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 const app = express();
 app.use(express.json()); // JSON verileri işleyebilmek için
@@ -412,5 +412,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-    console.log('Server is running on port 3000');
+    console.log(`Server is running on port ${PORT}`);
 });
