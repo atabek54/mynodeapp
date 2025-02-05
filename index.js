@@ -4,7 +4,7 @@ const socketIo = require('socket.io');
 const mysql = require('mysql2');
 const { v4: uuidv4 } = require('uuid'); // UUID oluşturmak için
 const bcrypt = require('bcryptjs');
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json()); // JSON verileri işleyebilmek için
@@ -14,6 +14,7 @@ const io = socketIo(server);
 const db = mysql.createPool({
     host: '104.247.162.162', 
     user: 'atabekhs_atabek54', 
+    port: "3306",
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase',
 });
