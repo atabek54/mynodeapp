@@ -12,7 +12,7 @@ app.use(express.json()); // JSON verileri işleyebilmek için
 const server = http.createServer(app);
 const io = socketIo(server);
 const db = mysql.createPool({
-    host: '104.247.162.162', 
+    host: '104.247.162.163', 
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
     database: 'atabekhs_hsadatabase',
