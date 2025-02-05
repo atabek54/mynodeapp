@@ -15,9 +15,7 @@ const db = mysql.createPool({
     host: '104.247.162.162', 
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
-    database: 'atabekhs_hsadatabase',
-    charset: 'utf8',
-});
+    database: 'atabekhs_hsadatabase'});
 db.getConnection((err, connection) => {
     if (err) {
         console.error('Veritabanı bağlantı hatası:', err);
