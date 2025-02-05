@@ -15,8 +15,34 @@ const db = mysql.createPool({
     host: '104.247.162.162', 
     user: 'atabekhs_atabek54', 
     password: 'Kaderkeita54', 
-    database: 'atabekhs_hsadatabase'
+    database: 'atabekhs_hsadatabase',
+    charset: 'utf8',
 });
+app.post('/checkuser', (req, res) => {
+    const { user_uuid } = req.body;
+
+    if (!user_uuid) {
+        return res.status(400).json({ error: 'User UUID is required' });
+    }
+
+    // Kullanıcıyı veritabanında ara
+    const query = 'SELECT user_uuid, username, point FROM users WHERE user_uuid = ?';
+    db.query(query, [user_uuid], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (result.length > 0) {
+            // Kullanıcı bulundu, bilgileri döndür
+            return res.json({ success: true, user: result[0] });
+        } else {
+            // Kullanıcı bulunamadı
+            return res.status(404).json({ error: 'User not found' });
+        }
+    });
+});
+
 app.post('/register', (req, res) => {
     const { username, password } = req.body;
 
@@ -33,7 +59,6 @@ app.post('/register', (req, res) => {
         }
 
         if (result.length > 0) {
-            // Eğer kullanıcı adı daha önce kaydedilmişse, hata döndür
             return res.status(400).json({ error: 'Username already taken' });
         }
 
@@ -47,18 +72,31 @@ app.post('/register', (req, res) => {
             const user_uuid = uuidv4(); // Benzersiz UUID oluştur
 
             // Yeni kullanıcıyı veritabanına ekle
-            const query = 'INSERT INTO users (user_uuid, username, password) VALUES (?, ?, ?)';
-            db.query(query, [user_uuid, username, hashedPassword], (err, result) => {
+            const insertQuery = 'INSERT INTO users (user_uuid, username, password, point) VALUES (?, ?, ?, 0)';
+            db.query(insertQuery, [user_uuid, username, hashedPassword], (err, result) => {
                 if (err) {
                     console.error('Database error:', err);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                res.json({ success: true, user_uuid });
+
+                // Kayıt başarılı olduysa, yeni kullanıcının tüm bilgilerini getir
+                const selectQuery = 'SELECT user_uuid, username, point FROM users WHERE user_uuid = ?';
+                db.query(selectQuery, [user_uuid], (err, userResult) => {
+                    if (err) {
+                        console.error('Database error:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    if (userResult.length > 0) {
+                        return res.json({ success: true, user: userResult[0] });
+                    } else {
+                        return res.status(500).json({ error: 'User retrieval failed' });
+                    }
+                });
             });
         });
     });
 });
-
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
@@ -67,15 +105,20 @@ app.post('/login', (req, res) => {
     }
 
     // Kullanıcıyı veritabanından bulalım
-    const query = 'SELECT * FROM users WHERE username = ?';
+    const query = 'SELECT user_uuid, username, password, point FROM users WHERE username = ?';
     db.query(query, [username], (err, result) => {
-        if (err || result.length === 0) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (result.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
         const user = result[0];
-        
-        // Şifreyi hash ile karşılaştıralım
+
+        // Şifreyi hash ile karşılaştır
         bcrypt.compare(password, user.password, (err, isMatch) => {
             if (err) {
                 console.error('Error comparing passwords:', err);
@@ -83,11 +126,15 @@ app.post('/login', (req, res) => {
             }
 
             if (isMatch) {
-                // Başarılı girişte user_uuid'yi de döndürüyoruz
+                // Başarılı girişte tüm kullanıcı bilgilerini döndür
                 res.json({
                     success: true,
                     message: 'Login successful',
-                    user_uuid: user.user_uuid, // user_uuid'yi burada döndürüyoruz
+                    user: {
+                        user_uuid: user.user_uuid,
+                        username: user.username,
+                        point: user.point
+                    }
                 });
             } else {
                 res.status(400).json({ error: 'Invalid password' });
@@ -95,6 +142,84 @@ app.post('/login', (req, res) => {
         });
     });
 });
+app.post('/updateUserPoint', (req, res) => {
+    const { user_uuid, point } = req.body;
+
+    if (!user_uuid || point === undefined) {
+        return res.status(400).json({ error: 'user_uuid and point are required' });
+    }
+
+    // Önce mevcut puanı al
+    const getUserQuery = 'SELECT * FROM users WHERE user_uuid = ?';
+    db.query(getUserQuery, [user_uuid], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let user = result[0];
+        let newPoint = user.point + point; // Yeni puanı hesapla
+
+        // Puanı güncelle
+        const updateQuery = 'UPDATE users SET point = ? WHERE user_uuid = ?';
+        db.query(updateQuery, [newPoint, user_uuid], (err, updateResult) => {
+            if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            // Kullanıcı bilgilerini tekrar çek (güncellenmiş haliyle)
+            db.query(getUserQuery, [user_uuid], (err, updatedResult) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                res.json({
+                    success: true,
+                    message: 'User point updated successfully',
+                    user: updatedResult[0] // Güncellenmiş kullanıcı bilgileri
+                });
+            });
+        });
+    });
+});
+
+app.post('/rankings', (req, res) => {
+    const { user_uuid } = req.body;
+
+    if (!user_uuid) {
+        return res.status(400).json({ error: 'User UUID is required' });
+    }
+
+    // Tüm kullanıcıları puana göre sıralı olarak getir
+    const query = `
+        SELECT id, username, point
+        FROM users
+        ORDER BY point DESC;
+    `;
+
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Kullanıcının kendi sıralamasını bul
+        const userIndex = results.findIndex(user => user.id === user_uuid) + 1; // 1'den başlat
+
+        res.json({
+            rankings: results.slice(0, 5), // İlk 5 kişiyi gönder
+            userRank: userIndex > 0 ? userIndex : "Not found" // Kullanıcı sıralaması varsa gönder
+        });
+    });
+});
+
+
 
 let waitingPlayer = null;
 let games = {}; 
@@ -105,48 +230,69 @@ function loadQuestions(callback) {
             console.error('Sorular çekilirken hata oluştu:', err);
             callback([]);
         } else {
-            callback(results);
+            // Veriyi JSON olarak alırken, karakter setini kontrol et
+            try {
+                const utf8Results = results.map((row) => {
+                    return {
+                        ...row,
+                        question: row.question ? Buffer.from(row.question, 'latin1').toString('utf8') : row.question,
+                    };
+                });
+
+                callback(utf8Results);
+            } catch (error) {
+                console.error('Veri işleme hatası:', error);
+                callback([]);
+            }
         }
     });
 }
+
 
 io.on('connection', (socket) => {
     console.log('A user connected: ' + socket.id);
 
     socket.on('joinGame', (username) => {
         if (!waitingPlayer) {
-            waitingPlayer = socket;
-            console.log(`Player ${socket.id} is waiting for an opponent.`);
+            waitingPlayer = { id: socket.id, socket, username }; // Kullanıcı ID'sini de sakla
+            console.log(`Player ${socket.id} (${username}) is waiting for an opponent.`);
             socket.emit('waitingForPlayer');
         } else {
             const roomId = `room-${socket.id}-${waitingPlayer.id}`;
-            console.log(`Game started in room ${roomId} with players: ${waitingPlayer.id} and ${socket.id}`);
-
+            console.log(`Game started in room ${roomId} with players: ${waitingPlayer.id} (${waitingPlayer.username}) and ${socket.id} (${username})`);
+    
             socket.join(roomId);
-            waitingPlayer.join(roomId);
-
+            waitingPlayer.socket.join(roomId);
+    
             games[roomId] = {
                 players: [
-                    { id: waitingPlayer.socket.id, username: waitingPlayer.username },
+                    { id: waitingPlayer.id, username: waitingPlayer.username },
                     { id: socket.id, username }
-                ],                scores: { [waitingPlayer.id]: 0, [socket.id]: 0 },
+                ],
+                scores: { [waitingPlayer.id]: 0, [socket.id]: 0 },
                 answeredQuestions: new Set(),
                 currentQuestionIndex: 0
             };
-
-            io.to(roomId).emit('gameStarted');
-
+    
+            io.to(roomId).emit('gameStarted', games[roomId].players);
+    
             loadQuestions((questions) => {
                 games[roomId].questions = questions;
                 io.to(roomId).emit('receiveQuestions', questions);
             });
-
+    
             // Yeni oyun başladığında waitingPlayer sıfırlanır
             waitingPlayer = null;
         }
     });
+    
+    
     socket.on('playerAnswered', (selectedOption) => {
-        const roomId = Object.keys(games).find(room => games[room].players.includes(socket.id));
+        const roomId = Object.keys(games).find(room => 
+            games[room].players.some(player => player.id === socket.id) // Değiştirildi!
+        );
+    
+        console.log("Found Room ID:", roomId);
     
         if (roomId && games[roomId]) {
             const game = games[roomId];
@@ -156,7 +302,6 @@ io.on('connection', (socket) => {
                 game.answeredQuestions = [];
             }
     
-            // Oyuncunun bu soruya zaten cevap verip vermediğini kontrol et
             const playerAnswered = game.answeredQuestions.some(answer => answer.playerId === socket.id && answer.question === currentQuestion);
     
             if (!playerAnswered) {
@@ -166,7 +311,6 @@ io.on('connection', (socket) => {
                     selectedAnswer: selectedOption
                 });
     
-                // Eğer doğru cevap verdiyse skor arttır
                 if (selectedOption === currentQuestion.correct_answer) {
                     game.scores[socket.id] += 1;
                     console.log(`Player ${socket.id} scored! Yeni skor: ${game.scores[socket.id]}`);
@@ -175,73 +319,60 @@ io.on('connection', (socket) => {
     
             // Tüm oyuncuların cevap verip vermediğini kontrol et
             const allPlayersAnswered = game.players.every(playerId =>
-                game.answeredQuestions.some(answer => answer.playerId === playerId && answer.question === currentQuestion)
+                game.answeredQuestions.some(answer => answer.playerId === playerId.id && answer.question === currentQuestion)
             );
     
             if (allPlayersAnswered) {
-                // İlk doğru cevabı veren oyuncuyu bul
-                const firstCorrectAnswer = game.answeredQuestions.find(answer => answer.selectedAnswer === currentQuestion.correct_answer);
-                
-                if (firstCorrectAnswer) {
-                    // İlk doğru cevabı veren oyuncu ile yeni soruya geç
-                    game.currentQuestionIndex = (game.currentQuestionIndex || 0) + 1;
+                game.currentQuestionIndex++;
     
-                    if (game.currentQuestionIndex < game.questions.length) {
-                        const nextQuestion = game.questions[game.currentQuestionIndex];
-                        game.answeredQuestions = []; // Yeni soru için önceki cevapları sıfırla
-                        io.to(roomId).emit('nextQuestion', nextQuestion);
-                    } else {
-                        io.to(roomId).emit('gameEnded');
-                        
-                        delete games[roomId];
-                        console.log(`Game ended in room: ${roomId}`);
-                    }
+                if (game.currentQuestionIndex < game.questions.length) {
+                    const nextQuestion = game.questions[game.currentQuestionIndex];
+                    game.answeredQuestions = [];
+                    io.to(roomId).emit('nextQuestion', nextQuestion);
                 } else {
-                    console.log("İKİ OYUNCUDA Doğru cevap VEREMEDI, bekleniyor...");
-                    game.currentQuestionIndex = (game.currentQuestionIndex || 0) + 1;
-    
-                    if (game.currentQuestionIndex < game.questions.length) {
-                        const nextQuestion = game.questions[game.currentQuestionIndex];
-                        game.answeredQuestions = []; // Yeni soru için önceki cevapları sıfırla
-                        io.to(roomId).emit('nextQuestion', nextQuestion);
-                    } else {
-                        io.to(roomId).emit('gameEnded');
-                        delete games[roomId];
-                        console.log(`Game ended in room: ${roomId}`);
-                    }
+                    io.to(roomId).emit('gameEnded');
+                    delete games[roomId];
+                    console.log(`Game ended in room: ${roomId}`);
                 }
     
-                // Skorları güncelle ve tüm oyunculara ilet
                 io.to(roomId).emit('updateScores', game.scores);
             }
+        } else {
+            console.log("HATA: Oyuncu herhangi bir odaya ait değil!");
         }
     });
     
     
+    
+    
 
     socket.on('cancelGame', () => {
-      // Eğer oyuncu bekleme durumundaysa ve oyun başlamamışsa
-      if (waitingPlayer && waitingPlayer.id === socket.id) {
-          console.log(`Player ${socket.id} cancelled before game started.`);
-          waitingPlayer = null;  // Bekleyen oyuncuyu sıfırlıyoruz
-          socket.emit('gameCancelled');  // İptal mesajını geri gönderiyoruz
-      } else {
-          // Eğer oyuncu oyunda ise, oyunun iptali işlemi
-          const roomId = Object.keys(games).find(room => games[room].players.includes(socket.id));
-          if (roomId && games[roomId]) {
-              console.log(`Player ${socket.id} cancelled the game in room ${roomId}`);
-              const otherPlayer = games[roomId].players.find(player => player !== socket.id);
-              if (otherPlayer) {
-                  io.to(otherPlayer).emit('opponentDisconnected');
-              }
-              // Oyun bilgisini sil
-              delete games[roomId];
-  
-              // İptal edilen oyun sonrası waitingPlayer sıfırlanmalı
-              waitingPlayer = null;
-          }
-      }
-  });
+        // Eğer oyuncu bekleme durumundaysa ve oyun başlamamışsa
+        if (waitingPlayer && waitingPlayer.id === socket.id) {  // Artık 'id' doğru şekilde kontrol ediliyor
+            console.log(`Player ${socket.id} cancelled before game started.`);
+            waitingPlayer = null;  // Bekleyen oyuncuyu sıfırla
+            socket.emit('gameCancelled');  // İptal mesajını geri gönder
+        } else {
+            // Eğer oyuncu oyunda ise, oyunun iptali işlemi
+            const roomId = Object.keys(games).find(room => 
+                games[room].players.some(player => player.id === socket.id)
+            );
+    
+            if (roomId && games[roomId]) {
+                console.log(`Player ${socket.id} cancelled the game in room ${roomId}`);
+                const otherPlayer = games[roomId].players.find(player => player.id !== socket.id);
+                if (otherPlayer) {
+                    io.to(otherPlayer.id).emit('opponentDisconnected');
+                }
+                // Oyun bilgisini sil
+                delete games[roomId];
+    
+                // Oyun iptal edildiğinde waitingPlayer sıfırlanmalı
+                waitingPlayer = null;
+            }
+        }
+    });
+    
   
 
     socket.on('endGame', () => {
