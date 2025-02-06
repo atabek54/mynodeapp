@@ -140,7 +140,8 @@ app.post('/login', (req, res) => {
                     user: {
                         user_uuid: user.user_uuid,
                         username: user.username,
-                        point: user.point
+                        point: user.point,
+                        isPremium : user.isPremium
                     }
                 });
             } else {
