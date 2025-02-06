@@ -33,7 +33,7 @@ app.post('/checkuser', (req, res) => {
     }
 
     // Kullanıcıyı veritabanında ara
-    const query = 'SELECT user_uuid, username, point FROM users WHERE user_uuid = ?';
+    const query = 'SELECT user_uuid, username, point,isPremium FROM users WHERE user_uuid = ?';
     db.query(query, [user_uuid], (err, result) => {
         if (err) {
             console.error('Database error:', err);
