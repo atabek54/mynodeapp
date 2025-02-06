@@ -79,7 +79,7 @@ app.post('/register', (req, res) => {
             const user_uuid = uuidv4(); // Benzersiz UUID oluştur
 
             // Yeni kullanıcıyı veritabanına ekle
-            const insertQuery = 'INSERT INTO users (user_uuid, username, password, point) VALUES (?, ?, ?, 0)';
+            const insertQuery = 'INSERT INTO users (user_uuid, username, password, point,isPremium) VALUES (?, ?, ?, 0,0)';
             db.query(insertQuery, [user_uuid, username, hashedPassword], (err, result) => {
                 if (err) {
                     console.error('Database error:', err);
@@ -87,7 +87,7 @@ app.post('/register', (req, res) => {
                 }
 
                 // Kayıt başarılı olduysa, yeni kullanıcının tüm bilgilerini getir
-                const selectQuery = 'SELECT user_uuid, username, point FROM users WHERE user_uuid = ?';
+                const selectQuery = 'SELECT user_uuid, username, point,isPremium FROM users WHERE user_uuid = ?';
                 db.query(selectQuery, [user_uuid], (err, userResult) => {
                     if (err) {
                         console.error('Database error:', err);
@@ -112,7 +112,7 @@ app.post('/login', (req, res) => {
     }
 
     // Kullanıcıyı veritabanından bulalım
-    const query = 'SELECT user_uuid, username, password, point FROM users WHERE username = ?';
+    const query = 'SELECT user_uuid, username, password, point,isPremium FROM users WHERE username = ?';
     db.query(query, [username], (err, result) => {
         if (err) {
             console.error('Database error:', err);
