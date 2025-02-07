@@ -25,6 +25,11 @@ db.getConnection((err, connection) => {
     console.log('Veritabanına başarıyla bağlanıldı!');
     connection.release(); // Bağlantıyı serbest bırak
 });
+
+app.get('/', (req, res) => {
+    res.send('Hello');
+  });
+  
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
 
