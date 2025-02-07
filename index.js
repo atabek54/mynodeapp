@@ -265,6 +265,10 @@ function loadQuestions(callback) {
 io.on('connection', (socket) => {
     console.log('A user connected: ' + socket.id);
 
+    socket.on('connect', () => {
+        console.log('Bağlantı başarılı:', socket.id);
+        socket.emit('joinGame', 'Player1');
+      });
     socket.on('joinGame', (username) => {
         if (!waitingPlayer) {
             waitingPlayer = { id: socket.id, socket, username }; // Kullanıcı ID'sini de sakla
