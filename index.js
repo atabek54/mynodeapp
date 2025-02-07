@@ -26,7 +26,17 @@ db.getConnection((err, connection) => {
     connection.release(); // Bağlantıyı serbest bırak
 });
 
-
+app.post('/get-questions', (req, res) => {
+    const query = 'SELECT * FROM questions';
+  
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Sorgu hatası:', err);
+        return res.status(500).json({ success: false, message: 'Veri alınamadı.' });
+      }
+      res.json({ success: true, data: results });
+    });
+  });
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
 
