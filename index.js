@@ -27,9 +27,10 @@ db.getConnection((err, connection) => {
 });
 
 app.post('/get-questions', (req, res) => {
-    const query = 'SELECT * FROM questions';
+    const questionCount = req.body.questionCount || 10; // Varsayılan 10 soru
+    const query = `SELECT * FROM questions ORDER BY RAND() LIMIT ?`;
   
-    db.query(query, (err, results) => {
+    db.query(query, [questionCount], (err, results) => {
       if (err) {
         console.error('Sorgu hatası:', err);
         return res.status(500).json({ success: false, message: 'Veri alınamadı.' });
@@ -37,6 +38,7 @@ app.post('/get-questions', (req, res) => {
       res.json({ success: true, data: results });
     });
   });
+  
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
 
