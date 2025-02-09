@@ -147,6 +147,31 @@ app.post('/get-questions', (req, res) => {
     });
   });
   
+  app.post('/delete_wrong_answer', (req, res) => {
+    const { waq_id } = req.body;  // waq_id parametresini alıyoruz
+  
+    if (!waq_id) {
+      return res.status(400).json({ message: 'waq_id parametresi gerekli' });
+    }
+  
+    const sql = `
+      DELETE FROM wrong_answered_questions 
+      WHERE id = ?
+    `;
+  
+    db.query(sql, [waq_id], (err, result) => {
+      if (err) {
+        console.error('Veritabanı hatası:', err);
+        return res.status(500).json({ message: 'Veritabanı hatası', error: err });
+      }
+  
+      if (result.affectedRows > 0) {
+        return res.status(200).json({ message: 'Yanıt başarıyla silindi' });
+      } else {
+        return res.status(404).json({ message: 'Bu id ile eşleşen bir kayıt bulunamadı' });
+      }
+    });
+  });
   
     
 app.post('/checkuser', (req, res) => {
