@@ -63,7 +63,7 @@ app.post('/get-questions', (req, res) => {
     // Yanıtları veritabanına kaydedelim
     const promises = answered_questions.map((question) => {
       return new Promise((resolve, reject) => {
-        const { question: questionText, selected_answer, is_correct } = question;
+        const { question: questionText, selected_answer, is_correct,category_id } = question;
   
         // SQL sorgusunu yazalım
         const sql = 'INSERT INTO wrond_answered_questions (user_uuid, question, selected_answer, is_correct,category_id) VALUES (?, ?, ?, ?,?)';
