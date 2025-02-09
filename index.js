@@ -52,7 +52,44 @@ app.post('/get-questions', (req, res) => {
       res.json({ success: true, data: results });
     });
   });
+  app.post('/api/save_answered_questions', (req, res) => {
+    const { user_uuid, answered_questions } = req.body;
   
+    // Gelen veriyi kontrol et
+    if (!user_uuid || !Array.isArray(answered_questions)) {
+      return res.status(400).json({ message: 'Geçersiz veri formatı' });
+    }
+  
+    // Yanıtları veritabanına kaydedelim
+    const promises = answered_questions.map((question) => {
+      return new Promise((resolve, reject) => {
+        const { question: questionText, selected_answer, is_correct } = question;
+  
+        // SQL sorgusunu yazalım
+        const sql = 'INSERT INTO wrond_answered_questions (user_uuid, question, selected_answer, is_correct) VALUES (?, ?, ?, ?)';
+        const values = [user_uuid, questionText, selected_answer, is_correct];
+  
+        // Veritabanına ekleme yapalım
+        db.query(sql, values, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+    });
+  
+    // Tüm yanıtları kaydet
+    Promise.all(promises)
+      .then(() => {
+        res.status(200).json({ message: 'Yanıtlar başarıyla kaydedildi' });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.status(500).json({ message: 'Veritabanı hatası', error });
+      });
+  });
   
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
