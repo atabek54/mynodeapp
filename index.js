@@ -116,7 +116,7 @@ app.post('/get-questions', (req, res) => {
         q.*, 
         waq.id AS waq_id, waq.selected_answer, waq.is_correct, waq.category_id AS waq_category_id, waq.question_id AS waq_question_id
       FROM wrong_answered_questions waq
-      LEFT JOIN questions q ON waq.question_id = q.id 
+      INNER JOIN questions q ON waq.question_id = q.id 
       WHERE waq.user_uuid = ? AND waq.category_id = ?
     `;
   
