@@ -104,7 +104,46 @@ app.post('/get-questions', (req, res) => {
         res.status(500).json({ message: 'Veritabanı hatası', error });
       });
   });
+  app.get('/get_wrong_questions', (req, res) => {
+    const { user_uuid } = req.query;
   
+    if (!user_uuid) {
+      return res.status(400).json({ message: 'user_uuid parametresi gerekli' });
+    }
+  
+    const sql = `
+      SELECT 
+        q.*, 
+        waq.id AS waq_id, waq.selected_answer, waq.is_correct, waq.category_id AS waq_category_id, waq.question_id AS waq_question_id
+      FROM wrong_answered_questions waq
+      LEFT JOIN questions q ON waq.question_id = q.id 
+      WHERE waq.user_uuid = ?
+    `;
+  
+    db.query(sql, [user_uuid], (err, results) => {
+      if (err) {
+        console.error('Veritabanı hatası:', err);
+        return res.status(500).json({ message: 'Veritabanı hatası', error: err });
+      }
+  
+      // Tüm verileri iki ayrı key altında döndür
+      const questions = results.map(row => {
+        const { waq_id, selected_answer, is_correct, waq_category_id, waq_question_id, ...questionData } = row;
+        return questionData;
+      });
+  
+      const wrong_answered_q = results.map(row => ({
+        id: row.waq_id,
+        selected_answer: row.selected_answer,
+        is_correct: row.is_correct,
+        category_id: row.waq_category_id,
+        question_id: row.waq_question_id
+      }));
+  
+      res.status(200).json({ questions, wrong_answered_q });
+    });
+  });
+    
 app.post('/checkuser', (req, res) => {
     const { user_uuid } = req.body;
 
