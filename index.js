@@ -104,56 +104,56 @@ app.post('/get-questions', (req, res) => {
         res.status(500).json({ message: 'Veritabanı hatası', error });
       });
   });
-  app.post('/get_wrong_questions', (req, res) => {
-    const { user_uuid, category_id, limit } = req.body;  // limit parametresini alıyoruz
-  
-    if (!user_uuid || !category_id) {
-      return res.status(400).json({ message: 'user_uuid ve category_id parametreleri gerekli' });
+app.post('/get_wrong_questions', (req, res) => {
+  const { user_uuid, category_id, limit } = req.body;  // limit parametresini alıyoruz
+
+  if (!user_uuid || !category_id) {
+    return res.status(400).json({ message: 'user_uuid ve category_id parametreleri gerekli' });
+  }
+
+  // Eğer limit değeri belirtilmemişse, default olarak 10 alalım
+  const questionLimit = limit ? parseInt(limit) : 10;
+
+  const sql = `
+    SELECT 
+      q.*, 
+      waq.id AS waq_id, waq.selected_answer, waq.is_correct, waq.category_id AS waq_category_id, waq.question_id AS waq_question_id
+    FROM wrong_answered_questions waq
+    INNER JOIN questions q ON waq.question_id = q.id 
+    WHERE waq.user_uuid = ? AND waq.category_id = ?
+    LIMIT ?
+  `;
+
+  db.query(sql, [user_uuid, category_id, questionLimit], (err, results) => {
+    if (err) {
+      console.error('Veritabanı hatası:', err);
+      return res.status(500).json({ message: 'Veritabanı hatası', error: err });
     }
-  
-    // Eğer limit değeri belirtilmemişse, default olarak 10 alalım
-    const questionLimit = limit ? parseInt(limit) : 10;
-  
-    const sql = `
-      SELECT 
-        q.*, 
-        waq.id AS waq_id, waq.selected_answer, waq.is_correct, waq.category_id AS waq_category_id, waq.question_id AS waq_question_id
-      FROM wrong_answered_questions waq
-      INNER JOIN questions q ON waq.question_id = q.id 
-      WHERE waq.user_uuid = ? AND waq.category_id = ?
-      LIMIT ?
-    `;
-  
-    db.query(sql, [user_uuid, category_id, questionLimit], (err, results) => {
-      if (err) {
-        console.error('Veritabanı hatası:', err);
-        return res.status(500).json({ message: 'Veritabanı hatası', error: err });
-      }
-  
-      // results.map ile questions ve waq_id'yi birleştiriyoruz
-      const questions = results.map(row => {
-        const { waq_id, selected_answer, is_correct, waq_category_id, waq_question_id, ...questionData } = row;
-        // questionData'ya waq_id'yi dahil ediyoruz
-        return { ...questionData, waq_id };
-      });
-  
-      const wrong_answered_q = results.map(row => ({
-        id: row.waq_id,
-        selected_answer: row.selected_answer,
-        is_correct: row.is_correct,
-        category_id: row.waq_category_id,
-        question_id: row.waq_question_id
-      }));
-  
-      res.status(200).json({ questions, wrong_answered_q });
+
+    // results.map ile questions ve waq_id'yi birleştiriyoruz
+    const questions = results.map(row => {
+      const { waq_id, selected_answer, is_correct, waq_category_id, waq_question_id, ...questionData } = row;
+      // questionData'ya waq_id'yi dahil ediyoruz
+      return { ...questionData, waq_id };
     });
+
+    const wrong_answered_q = results.map(row => ({
+      id: row.waq_id,
+      selected_answer: row.selected_answer,
+      is_correct: row.is_correct,
+      category_id: row.waq_category_id,
+      question_id: row.waq_question_id
+    }));
+
+    res.status(200).json({ questions, wrong_answered_q });
   });
-  
+});
+
   
   app.post('/delete_wrong_answer', (req, res) => {
     const { id } = req.body;  // waq_id parametresini alıyoruz
   
-    if (!waq_id) {
+    if (!id) {
       return res.status(400).json({ message: 'waq_id parametresi gerekli' });
     }
   
@@ -162,7 +162,7 @@ app.post('/get-questions', (req, res) => {
       WHERE id = ?
     `;
   
-    db.query(sql, [waq_id], (err, result) => {
+    db.query(sql, [id], (err, result) => {
       if (err) {
         console.error('Veritabanı hatası:', err);
         return res.status(500).json({ message: 'Veritabanı hatası', error: err });
