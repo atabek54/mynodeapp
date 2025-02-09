@@ -66,17 +66,18 @@ app.post('/get-questions', (req, res) => {
         const { question: questionText, selected_answer, is_correct,category_id } = question;
   
         // SQL sorgusunu yazalım
-        const sql = 'INSERT INTO wrond_answered_questions (user_uuid, question, selected_answer, is_correct,category_id) VALUES (?, ?, ?, ?,?)';
+        const sql = 'INSERT INTO wrong_answered_questions (user_uuid, question, selected_answer, is_correct,category_id) VALUES (?, ?, ?, ?,?)';
         const values = [user_uuid, questionText, selected_answer, is_correct,category_id];
   
         // Veritabanına ekleme yapalım
         db.query(sql, values, (err, result) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        });
+            if (err) {
+              console.error('Veritabanı hatası:', err); // Hata mesajını daha ayrıntılı yazdır
+              reject(err);
+            } else {
+              resolve(result);
+            }
+          });
       });
     });
   
