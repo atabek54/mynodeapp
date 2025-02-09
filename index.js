@@ -104,7 +104,7 @@ app.post('/get-questions', (req, res) => {
         res.status(500).json({ message: 'Veritabanı hatası', error });
       });
   });
-  app.get('/get_wrong_questions', (req, res) => {
+  app.post('/get_wrong_questions', (req, res) => {
     const { user_uuid } = req.query;
   
     if (!user_uuid) {
