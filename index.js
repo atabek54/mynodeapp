@@ -105,11 +105,14 @@ app.post('/get-questions', (req, res) => {
       });
   });
   app.post('/get_wrong_questions', (req, res) => {
-    const { user_uuid, category_id } = req.body; // POST isteğinde user_uuid ve category_id parametrelerini alıyoruz
+    const { user_uuid, category_id, limit } = req.body;  // limit parametresini alıyoruz
   
     if (!user_uuid || !category_id) {
       return res.status(400).json({ message: 'user_uuid ve category_id parametreleri gerekli' });
     }
+  
+    // Eğer limit değeri belirtilmemişse, default olarak 10 alalım
+    const questionLimit = limit ? parseInt(limit) : 10;
   
     const sql = `
       SELECT 
@@ -118,9 +121,10 @@ app.post('/get-questions', (req, res) => {
       FROM wrong_answered_questions waq
       INNER JOIN questions q ON waq.question_id = q.id 
       WHERE waq.user_uuid = ? AND waq.category_id = ?
+      LIMIT ?
     `;
   
-    db.query(sql, [user_uuid, category_id], (err, results) => {
+    db.query(sql, [user_uuid, category_id, questionLimit], (err, results) => {
       if (err) {
         console.error('Veritabanı hatası:', err);
         return res.status(500).json({ message: 'Veritabanı hatası', error: err });
@@ -142,6 +146,7 @@ app.post('/get-questions', (req, res) => {
       res.status(200).json({ questions, wrong_answered_q });
     });
   });
+  
   
     
 app.post('/checkuser', (req, res) => {
