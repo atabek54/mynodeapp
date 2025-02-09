@@ -148,7 +148,7 @@ app.post('/get-questions', (req, res) => {
   });
   
   app.post('/delete_wrong_answer', (req, res) => {
-    const { waq_id } = req.body;  // waq_id parametresini alıyoruz
+    const { id } = req.body;  // waq_id parametresini alıyoruz
   
     if (!waq_id) {
       return res.status(400).json({ message: 'waq_id parametresi gerekli' });
