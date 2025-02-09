@@ -66,8 +66,8 @@ app.post('/get-questions', (req, res) => {
         const { question: questionText, selected_answer, is_correct } = question;
   
         // SQL sorgusunu yazalım
-        const sql = 'INSERT INTO wrond_answered_questions (user_uuid, question, selected_answer, is_correct) VALUES (?, ?, ?, ?)';
-        const values = [user_uuid, questionText, selected_answer, is_correct];
+        const sql = 'INSERT INTO wrond_answered_questions (user_uuid, question, selected_answer, is_correct,category_id) VALUES (?, ?, ?, ?,?)';
+        const values = [user_uuid, questionText, selected_answer, is_correct,category_id];
   
         // Veritabanına ekleme yapalım
         db.query(sql, values, (err, result) => {
