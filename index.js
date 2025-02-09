@@ -52,7 +52,7 @@ app.post('/get-questions', (req, res) => {
       res.json({ success: true, data: results });
     });
   });
-  app.post('/api/save_answered_questions', (req, res) => {
+  app.post('/save_answered_questions', (req, res) => {
     const { user_uuid, answered_questions } = req.body;
   
     // Gelen veriyi kontrol et
