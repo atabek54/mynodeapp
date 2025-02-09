@@ -223,7 +223,40 @@ app.post('/updateUserPoint', (req, res) => {
         });
     });
 });
-
+app.post('/update-premium', (req, res) => {
+    const { user_uuid } = req.body;
+  
+    if (!user_uuid) {
+      return res.status(400).json({ message: 'user_uuid gerekli.' });
+    }
+  
+    const updateSql = 'UPDATE users SET isPremium = 1 WHERE user_uuid = ?';
+    
+    db.query(updateSql, [user_uuid], (err, result) => {
+      if (err) {
+        console.error('Güncelleme hatası:', err);
+        return res.status(500).json({ message: 'Bir hata oluştu.' });
+      }
+  
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+      }
+  
+      // Güncellenen kullanıcıyı getir
+      const selectSql = 'SELECT * FROM users WHERE user_uuid = ?';
+      db.query(selectSql, [user_uuid], (err, userResult) => {
+        if (err) {
+          console.error('Kullanıcı verisi getirme hatası:', err);
+          return res.status(500).json({ message: 'Kullanıcı verisi alınamadı.' });
+        }
+  
+        res.status(200).json({
+          message: 'Premium başarıyla güncellendi.',
+          user: userResult[0] // Tüm kullanıcı bilgileri
+        });
+      });
+    });
+  });
 app.post('/rankings', (req, res) => {
     const { user_uuid } = req.body;
 
