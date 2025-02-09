@@ -60,28 +60,41 @@ app.post('/get-questions', (req, res) => {
       return res.status(400).json({ message: 'Geçersiz veri formatı' });
     }
   
-    // Yanıtları veritabanına kaydedelim
     const promises = answered_questions.map((question) => {
       return new Promise((resolve, reject) => {
-        const { question: questionText, selected_answer, is_correct,category_id ,question_id} = question;
+        const { question: questionText, selected_answer, is_correct, category_id, question_id } = question;
   
-        // SQL sorgusunu yazalım
-        const sql = 'INSERT INTO wrong_answered_questions (user_uuid, question, selected_answer, is_correct,category_id,question_id) VALUES (?, ?, ?, ?,?,?)';
-        const values = [user_uuid, questionText, selected_answer, is_correct,category_id,question_id];
+        // Önce question_id'yi kontrol et
+        const checkSql = 'SELECT COUNT(*) AS count FROM wrong_answered_questions WHERE question_id = ? AND user_uuid = ?';
+        db.query(checkSql, [question_id, user_uuid], (checkErr, checkResult) => {
+          if (checkErr) {
+            console.error('Veritabanı kontrol hatası:', checkErr);
+            return reject(checkErr);
+          }
   
-        // Veritabanına ekleme yapalım
-        db.query(sql, values, (err, result) => {
-            if (err) {
-              console.error('Veritabanı hatası:', err); // Hata mesajını daha ayrıntılı yazdır
-              reject(err);
+          const count = checkResult[0].count;
+          if (count > 0) {
+            // Zaten varsa ekleme yapma
+            console.log(`Soru ID: ${question_id} zaten mevcut, atlanıyor.`);
+            return resolve(`Soru ID: ${question_id} zaten mevcut.`);
+          }
+  
+          // Yoksa yeni kayıt ekle
+          const insertSql = 'INSERT INTO wrong_answered_questions (user_uuid, question, selected_answer, is_correct, category_id, question_id) VALUES (?, ?, ?, ?, ?, ?)';
+          const values = [user_uuid, questionText, selected_answer, is_correct, category_id, question_id];
+  
+          db.query(insertSql, values, (insertErr, result) => {
+            if (insertErr) {
+              console.error('Veritabanı ekleme hatası:', insertErr);
+              reject(insertErr);
             } else {
               resolve(result);
             }
           });
+        });
       });
     });
   
-    // Tüm yanıtları kaydet
     Promise.all(promises)
       .then(() => {
         res.status(200).json({ message: 'Yanıtlar başarıyla kaydedildi' });
