@@ -130,9 +130,11 @@ app.post('/get-questions', (req, res) => {
         return res.status(500).json({ message: 'Veritabanı hatası', error: err });
       }
   
+      // results.map ile questions ve waq_id'yi birleştiriyoruz
       const questions = results.map(row => {
         const { waq_id, selected_answer, is_correct, waq_category_id, waq_question_id, ...questionData } = row;
-        return questionData;
+        // questionData'ya waq_id'yi dahil ediyoruz
+        return { ...questionData, waq_id };
       });
   
       const wrong_answered_q = results.map(row => ({
@@ -146,6 +148,7 @@ app.post('/get-questions', (req, res) => {
       res.status(200).json({ questions, wrong_answered_q });
     });
   });
+  
   
   app.post('/delete_wrong_answer', (req, res) => {
     const { id } = req.body;  // waq_id parametresini alıyoruz
