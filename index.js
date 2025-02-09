@@ -39,7 +39,7 @@ app.post('/get-questions', (req, res) => {
       queryParams.push(categoryId);
     }
   
-    query += ` and id = 525`;
+ 
     query += ` ORDER BY RAND() LIMIT ?`;
 
     queryParams.push(questionCount);
